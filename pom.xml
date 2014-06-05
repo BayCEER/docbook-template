@@ -1,0 +1,242 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	
+	
+	
+	<groupId>de.unibayreuth.bayceer.bayeos</groupId>
+	<artifactId>docbook-template</artifactId>
+	<version>1.0.0</version>
+	<packaging>pom</packaging>
+
+	<name>docbook-template</name>
+	<description>This is a documentation template for BayEOS</description>
+
+	<parent>
+  	<groupId>de.unibayreuth.bayceer.bayeos</groupId>
+  	<artifactId>bayeos-parent</artifactId>
+  	<version>1.0.0</version>
+	<relativePath>../bayeos-parent/pom.xml</relativePath>
+  </parent>
+	
+	<modules>
+		<module>../docbook-styles</module>	
+    </modules>
+	
+	
+	<properties>
+		<!-- Arbeitsverzeichnis des Docbkx-Plugins definieren -->
+		<workDirectory>${basedir}/target/work/docbkx</workDirectory>
+
+		<!-- Versionen der DocBook-Komponenten -->
+		<docbook-styles.version>1.1.0</docbook-styles.version>
+		<docbkx-maven-plugin.version>2.0.13</docbkx-maven-plugin.version>
+		<docbook.version>5.0-all</docbook.version>
+		<fop-hyph.version>1.2</fop-hyph.version>
+		<maven-assembly-plugin.version>2.2.1</maven-assembly-plugin.version>
+		<maven.build.timestamp.format>yyyy-MM-dd</maven.build.timestamp.format>	
+   		<timestamp>${maven.build.timestamp}</timestamp>
+		<!-- Should be overwritten by childs -->
+		<docbook_source>user-guide.xml</docbook_source>
+  	</properties>
+
+	<build>
+		<plugins>
+			<plugin>
+				<!--
+					DocBook Styles, Bilder ins Arbeitsverzeichnis entpacken
+				-->
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-dependency-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>unpack-docbook-userguide</id>
+						<phase>generate-sources</phase>
+						<goals>
+							<goal>unpack</goal>
+						</goals>
+						<configuration>
+							<includes>styles/**,images/**</includes>
+							<artifactItems>
+								<artifactItem>
+									<groupId>de.conceptpeople.docbook</groupId>
+									<artifactId>docbook-styles</artifactId>
+									<version>${docbook-styles.version}</version>
+									<type>zip</type>
+								</artifactItem>
+							</artifactItems>
+							<outputDirectory>${workDirectory}</outputDirectory>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+
+			<plugin>
+				<groupId>com.agilejava.docbkx</groupId>
+				<artifactId>docbkx-maven-plugin</artifactId>
+				<version>${docbkx-maven-plugin.version}</version>
+				<dependencies>
+					<!-- DocBook-Version festlegen -->
+					<dependency>
+						<groupId>net.sf.docbook</groupId>
+						<artifactId>docbook-xml</artifactId>
+						<version>${docbook.version}</version>
+						<classifier>resources</classifier>
+						<type>zip</type>
+						<scope>runtime</scope>
+					</dependency>
+
+					<!-- Ermöglicht Silbentrennung -->
+					<dependency>
+						<groupId>net.sf.offo</groupId>
+						<artifactId>fop-hyph</artifactId>
+						<version>${fop-hyph.version}</version>
+						<scope>runtime</scope>
+					</dependency>
+				</dependencies>
+
+				
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<id>generate</id>
+						<goals>						
+							<goal>generate-pdf</goal>
+							<goal>generate-html</goal>							
+						</goals>
+						<configuration>
+							<includes>${docbook_source}</includes>
+						</configuration>
+					</execution>
+				</executions>
+				
+				<configuration>
+					<!-- Arbeitsverzeichnis festlegen -->
+					<sourceDirectory>${workDirectory}</sourceDirectory>
+					
+					
+					<!-- Kopiert die notwendigen Sourcen -->
+							<preProcess>
+								<copy todir="${workDirectory}">
+									<fileset dir="${basedir}/src/docbkx" />
+								</copy>
+
+								<!-- Kopiert Bilder fuer die HTML-Version -->
+								<copy todir="${basedir}/target/docbkx/html/images">
+									<fileset dir="${workDirectory}/images">
+										<exclude name="**/*.pdf" />
+									</fileset>
+								</copy>								
+								<!-- Kopiert CSS-Styles fuer die HTML-Version -->
+								<copy todir="${basedir}/target/docbkx/html/styles">
+									<fileset dir="${workDirectory}/styles">
+										<include name="*.css" />
+									</fileset>
+								</copy>
+							</preProcess>
+
+					<!-- Zusaetzliche XSLT Parameter-->
+					<customizationParameters>
+						<parameter>
+							<name>project.version</name>
+							<value>${project.version}</value>
+						</parameter>	
+						<parameter>
+							<name>timestamp</name>
+							<value>${timestamp}</value>
+						</parameter>																			
+					</customizationParameters>
+
+					<!-- Setzt die Dokumentensprache auf English -->
+					<l10nGentextLanguage>en</l10nGentextLanguage>
+
+					<!-- Eigene Sprachdefinitionen fuer Syntax highlighting laden-->
+					<highlightXslthlConfig>${workDirectory}/styles/highlighters/xslthl-config.xml</highlightXslthlConfig>
+
+					<!-- Allgemeine Schriftart angeben -->
+					<bodyFontFamily>Calibri</bodyFontFamily>
+
+					<!-- Eigene Fonts einbinden -->
+					<fonts>
+						<font>
+							<name>Calibri</name>
+							<style>normal</style>
+							<weight>normal</weight>
+							<embedFile>${workDirectory}/styles/fonts/Calibri/calibri.ttf</embedFile>
+							<metricsFile>${workDirectory}/styles/fonts/Calibri/calibri.xml</metricsFile>
+						</font>
+						<font>
+							<name>Calibri</name>
+							<style>normal</style>
+							<weight>bold</weight>
+							<embedFile>${workDirectory}/styles/fonts/Calibri/calibrib.ttf</embedFile>
+							<metricsFile>${workDirectory}/styles/fonts/Calibri/calibrib.xml</metricsFile>
+						</font>
+						<font>
+							<name>Calibri</name>
+							<style>italic</style>
+							<weight>normal</weight>
+							<embedFile>${workDirectory}/styles/fonts/Calibri/calibrii.ttf</embedFile>
+							<metricsFile>${workDirectory}/styles/fonts/Calibri/calibrii.xml</metricsFile>
+						</font>
+
+						<font>
+							<name>Courier New</name>
+							<style>normal</style>
+							<weight>normal</weight>
+							<embedFile>${workDirectory}/styles/fonts/Courier/cour.ttf</embedFile>
+							<metricsFile>${workDirectory}/styles/fonts/Courier/courier.xml</metricsFile>
+						</font>
+						<font>
+							<name>Courier New</name>
+							<style>normal</style>
+							<weight>bold</weight>
+							<embedFile>${workDirectory}/styles/fonts/Courier/courbd.ttf</embedFile>
+							<metricsFile>${workDirectory}/styles/fonts/Courier/courier-bold.xml</metricsFile>
+						</font>
+						<font>
+							<name>Courier New</name>
+							<style>italic</style>
+							<weight>normal</weight>
+							<embedFile>${workDirectory}/styles/fonts/Courier/couri.ttf</embedFile>
+							<metricsFile>${workDirectory}/styles/fonts/Courier/courier-italic.xml</metricsFile>
+						</font>
+					</fonts>
+
+					<!-- Eigene Styles fuer PDF -->
+					<foCustomization>${workDirectory}/styles/docbook-pdf.xsl</foCustomization>
+					<!-- Eigene Styles fuer HTML -->
+					<htmlCustomization>${workDirectory}/styles/docbook-html.xsl</htmlCustomization>
+
+					<!--
+						Erlaubt Strukturierung einer XML-Datei ueber xi:include href="..."
+					-->
+					<xincludeSupported>true</xincludeSupported>
+				</configuration>
+			</plugin>
+			
+			<plugin>
+				<artifactId>maven-assembly-plugin</artifactId>
+				<version>${maven-assembly-plugin.version}</version>
+				<executions>
+					<execution>
+						<id>zip documentation</id>
+						<phase>package</phase>
+						<goals>
+							<goal>single</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<finalName>${project.artifactId}-${project.version}</finalName>
+					<appendAssemblyId>false</appendAssemblyId>
+					<descriptors>
+						<descriptor>${basedir}/src/docbkx/assembly/zip-source.xml</descriptor>
+					</descriptors>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+
+</project>
+
